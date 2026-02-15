@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AutoBook Platform — Global Automotive Supply Chain Intelligence</title>
+  <meta name="description" content="Search 36,058 automotive suppliers and 2,142 OEM plants across 97 countries. The world's most comprehensive automotive supply chain database.">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚗</text></svg>">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+    #root { min-height: 100vh; }
+    /* Smooth scrolling */
+    html { scroll-behavior: smooth; }
+    /* Hide scrollbar for webkit */
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; }
+    ::-webkit-scrollbar-thumb { background: #bbb; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #999; }
+    button { font-family: inherit; }
+    select { font-family: inherit; }
+    input { font-family: inherit; }
+    a { text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel" data-type="module">
+    const { useState, useEffect, useMemo, useCallback } = React;
+
+    // ─── Constants ───────────────────────────────────────────────
+    const NAVY = "#1A3C5E";
+    const GOLD = "#C8A951";
+    const BLUE = "#2E6B9E";
+    const DARK = "#0F2337";
+    const LIGHT = "#F5F6FA";
+    const PAGE_SIZE = 25;
+
+    // ─── Country → ISO Code mapping for flag icons ──────────────
+    const COUNTRY_CODES = {
+      "China": "cn", "Japan": "jp", "USA": "us", "U.S.A.": "us", "Germany": "de", "India": "in",
+      "Thailand": "th", "Mexico": "mx", "Korea": "kr", "France": "fr", "Indonesia": "id",
+      "UK": "gb", "United Kingdom": "gb", "Brazil": "br", "Spain": "es", "Malaysia": "my",
+      "Taiwan": "tw", "Poland": "pl", "Italy": "it", "Czech Republic": "cz", "Canada": "ca",
+      "Vietnam": "vn", "Philippines": "ph", "Russia": "ru", "Turkey": "tr", "Hungary": "hu",
+      "Austria": "at", "Sweden": "se", "Singapore": "sg", "Belgium": "be", "Romania": "ro",
+      "South Africa": "za", "Netherlands": "nl", "Portugal": "pt", "Australia": "au",
+      "Slovakia": "sk", "Argentina": "ar", "Colombia": "co", "Chile": "cl", "Morocco": "ma",
+      "Egypt": "eg", "Pakistan": "pk", "Bangladesh": "bd", "Iran": "ir", "Iraq": "iq",
+      "Ukraine": "ua", "Serbia": "rs", "Croatia": "hr", "Slovenia": "si", "Bulgaria": "bg",
+      "Finland": "fi", "Norway": "no", "Denmark": "dk", "Switzerland": "ch", "Ireland": "ie",
+      "New Zealand": "nz", "Peru": "pe", "Venezuela": "ve", "Ecuador": "ec", "Uruguay": "uy",
+      "Paraguay": "py", "Bolivia": "bo", "Myanmar": "mm", "Cambodia": "kh", "Laos": "la",
+      "Sri Lanka": "lk", "Nepal": "np", "Kenya": "ke", "Nigeria": "ng", "Ghana": "gh",
+      "Tanzania": "tz", "Ethiopia": "et", "UAE": "ae", "Saudi Arabia": "sa", "Qatar": "qa",
+      "Kuwait": "kw", "Bahrain": "bh", "Oman": "om", "Jordan": "jo", "Lebanon": "lb",
+      "Israel": "il", "Greece": "gr", "Lithuania": "lt", "Latvia": "lv", "Estonia": "ee",
+      "Luxembourg": "lu", "Cyprus": "cy", "Malta": "mt", "Iceland": "is", "Georgia": "ge",
+      "Kazakhstan": "kz", "Uzbekistan": "uz", "Belarus": "by", "Moldova": "md",
+      "Bosnia and Herzegovina": "ba", "North Macedonia": "mk", "Albania": "al", "Montenegro": "me",
+      "Dominican Republic": "do", "Costa Rica": "cr", "Panama": "pa", "Guatemala": "gt",
+      "Honduras": "hn", "El Salvador": "sv", "Nicaragua": "ni", "Jamaica": "jm",
+      "Trinidad and Tobago": "tt", "Puerto Rico": "pr", "Tunisia": "tn", "Algeria": "dz",
+      "Libya": "ly", "Senegal": "sn", "Ivory Coast": "ci", "Cameroon": "cm",
+      "Democratic Republic of Congo": "cd", "Angola": "ao", "Mozambique": "mz", "Zambia": "zm",
+      "Zimbabwe": "zw", "Botswana": "bw", "Namibia": "na", "Madagascar": "mg",
+    };
+
+    const FlagIcon = ({ country, size = 40 }) => {
+      const code = COUNTRY_CODES[country];
+      if (!code) return <div style={{ width: size, height: size, borderRadius: "50%", background: "#ddd", display: "flex", alignItems: "center", justifyContent: "center", fontSize: size * 0.35, color: "#888", fontWeight: 700, flexShrink: 0 }}>🌐</div>;
+      return (
+        <img
+          src={`https://flagcdn.com/w80/${code}.png`}
+          alt={country}
+          style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", flexShrink: 0, border: "2px solid #e8eaef" }}
+          onError={e => { e.target.style.display = "none"; }}
+        />
+      );
+    };
+
+    // ─── Styles ──────────────────────────────────────────────────
+    const styles = {
+      app: { fontFamily: "'Segoe UI', system-ui, -apple-system, sans-serif", color: "#333", minHeight: "100vh", background: LIGHT },
+      container: { maxWidth: 1280, margin: "0 auto", padding: "0 24px" },
+      nav: { background: DARK, padding: "12px 0", position: "sticky", top: 0, zIndex: 100, borderBottom: `3px solid ${GOLD}` },
+      navInner: { maxWidth: 1280, margin: "0 auto", padding: "0 24px", display: "flex", alignItems: "center", justifyContent: "space-between" },
+      logo: { display: "flex", alignItems: "baseline", gap: 0 },
+      logoAuto: { fontSize: 26, fontWeight: 900, color: "white", fontFamily: "Arial, sans-serif", letterSpacing: 1 },
+      logoBook: { fontSize: 26, fontWeight: 900, color: GOLD, fontFamily: "Arial, sans-serif", letterSpacing: 1 },
+      navLinks: { display: "flex", gap: 24, alignItems: "center" },
+      navLink: { color: "#aab", fontSize: 14, textDecoration: "none", cursor: "pointer", border: "none", background: "none", padding: "6px 0" },
+      navBtn: { background: GOLD, color: DARK, padding: "8px 20px", borderRadius: 6, fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer" },
+      hero: { background: `linear-gradient(135deg, ${DARK} 0%, ${NAVY} 100%)`, padding: "80px 0 60px", textAlign: "center" },
+      heroBadge: { display: "inline-block", background: "rgba(200,169,81,0.15)", color: GOLD, padding: "6px 18px", borderRadius: 20, fontSize: 13, fontWeight: 600, marginBottom: 20, border: `1px solid rgba(200,169,81,0.3)` },
+      heroTitle: { fontSize: 48, fontWeight: 900, color: "white", margin: "0 0 16px", fontFamily: "Arial, sans-serif", lineHeight: 1.1 },
+      heroSub: { fontSize: 20, color: "#9aa8b8", maxWidth: 700, margin: "0 auto 40px" },
+      statRow: { display: "flex", justifyContent: "center", gap: 48, flexWrap: "wrap" },
+      stat: { textAlign: "center" },
+      statNum: { fontSize: 36, fontWeight: 900, color: GOLD, fontFamily: "Arial, sans-serif" },
+      statLabel: { fontSize: 13, color: "#8899aa", marginTop: 4 },
+      section: { padding: "60px 0" },
+      sectionTitle: { fontSize: 32, fontWeight: 800, color: NAVY, marginBottom: 8, fontFamily: "Arial, sans-serif" },
+      sectionSub: { fontSize: 16, color: "#667", marginBottom: 32 },
+      card: { background: "white", borderRadius: 12, padding: 24, boxShadow: "0 2px 12px rgba(0,0,0,0.06)", border: "1px solid #e8eaef" },
+      cardGold: { background: "white", borderRadius: 12, padding: 24, boxShadow: "0 2px 12px rgba(0,0,0,0.06)", border: `2px solid ${GOLD}` },
+      sidebar: { width: 240, background: DARK, minHeight: "calc(100vh - 55px)", padding: "20px 0", flexShrink: 0 },
+      sideItem: (active) => ({ display: "flex", alignItems: "center", gap: 12, padding: "12px 24px", color: active ? GOLD : "#8899aa", background: active ? "rgba(200,169,81,0.1)" : "transparent", cursor: "pointer", border: "none", width: "100%", textAlign: "left", fontSize: 14, fontWeight: active ? 700 : 400, borderLeft: active ? `3px solid ${GOLD}` : "3px solid transparent" }),
+      mainContent: { flex: 1, padding: 32, minWidth: 0 },
+      table: { width: "100%", borderCollapse: "collapse", fontSize: 13 },
+      th: { textAlign: "left", padding: "10px 12px", background: NAVY, color: "white", fontWeight: 600, fontSize: 12, position: "sticky", top: 0 },
+      td: { padding: "8px 12px", borderBottom: "1px solid #eee", verticalAlign: "top", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis" },
+      tdLink: { color: BLUE, textDecoration: "none", fontSize: 13 },
+      searchBar: { display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap", alignItems: "center" },
+      input: { padding: "10px 16px", borderRadius: 8, border: "1px solid #ddd", fontSize: 14, flex: 1, minWidth: 200, outline: "none" },
+      select: { padding: "10px 16px", borderRadius: 8, border: "1px solid #ddd", fontSize: 14, minWidth: 160, outline: "none", background: "white" },
+      searchBtn: { padding: "10px 24px", borderRadius: 8, background: NAVY, color: "white", border: "none", cursor: "pointer", fontWeight: 600, fontSize: 14 },
+      pagination: { display: "flex", gap: 8, justifyContent: "center", alignItems: "center", marginTop: 20, flexWrap: "wrap" },
+      pageBtn: (active) => ({ padding: "6px 14px", borderRadius: 6, border: active ? `2px solid ${GOLD}` : "1px solid #ddd", background: active ? GOLD : "white", color: active ? "white" : "#555", cursor: "pointer", fontWeight: active ? 700 : 400, fontSize: 13 }),
+      blur: { filter: "blur(4px)", pointerEvents: "none", userSelect: "none" },
+      footer: { background: DARK, padding: "40px 0 24px", color: "#8899aa", fontSize: 13, textAlign: "center" },
+    };
+
+    // ─── Pagination Component ────────────────────────────────────
+    const Pagination = ({ total, page, setPage }) => {
+      const totalPages = Math.ceil(total / PAGE_SIZE);
+      if (totalPages <= 1) return null;
+      const pages = [];
+      const start = Math.max(1, page - 2);
+      const end = Math.min(totalPages, page + 2);
+      if (start > 1) pages.push(1);
+      if (start > 2) pages.push("...");
+      for (let i = start; i <= end; i++) pages.push(i);
+      if (end < totalPages - 1) pages.push("...");
+      if (end < totalPages) pages.push(totalPages);
+      return (
+        <div style={styles.pagination}>
+          <button style={styles.pageBtn(false)} onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1}>← Prev</button>
+          {pages.map((p, i) =>
+            p === "..." ? <span key={`d${i}`} style={{ color: "#999" }}>…</span> :
+            <button key={p} style={styles.pageBtn(p === page)} onClick={() => setPage(p)}>{p}</button>
+          )}
+          <button style={styles.pageBtn(false)} onClick={() => setPage(Math.min(totalPages, page + 1))} disabled={page === totalPages}>Next →</button>
+          <span style={{ color: "#888", fontSize: 12, marginLeft: 8 }}>Page {page} of {totalPages} ({total.toLocaleString()} results)</span>
+        </div>
+      );
+    };
+
+    // ─── Export CSV ──────────────────────────────────────────────
+    const exportCSV = (data, filename, columns) => {
+      const header = columns.map(c => c.label).join(",");
+      const rows = data.map(r => columns.map(c => {
+        let v = c.get(r) || "";
+        v = String(v).replace(/"/g, '""');
+        return v.includes(",") || v.includes("\n") ? `"${v}"` : v;
+      }).join(","));
+      const csv = [header, ...rows].join("\n");
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = filename; a.click();
+      URL.revokeObjectURL(url);
+    };
+
+    // ═══════════════════════════════════════════════════════════════
+    // MAIN APP
+    // ═══════════════════════════════════════════════════════════════
+    function AutoBookPlatform() {
+      const [isUnlocked, setIsUnlocked] = useState(false);
+      const [view, setView] = useState("landing");
+      const [suppliers, setSuppliers] = useState([]);
+      const [oemPlants, setOemPlants] = useState([]);
+      const [loading, setLoading] = useState(false);
+      const [stats, setStats] = useState(null);
+
+      const [supSearch, setSupSearch] = useState("");
+      const [supCountry, setSupCountry] = useState("");
+      const [supCategory, setSupCategory] = useState("");
+      const [supPage, setSupPage] = useState(1);
+      const [oemSearch, setOemSearch] = useState("");
+      const [oemCountry, setOemCountry] = useState("");
+      const [oemMaker, setOemMaker] = useState("");
+      const [oemPage, setOemPage] = useState(1);
+
+      useEffect(() => {
+        fetch("stats.json").then(r => r.json()).then(setStats).catch(() => {
+          setStats({ suppliers: { totalSuppliers: 36058, totalCountries: 97, countryCounts: {}, categoryCounts: {} }, oem: { totalPlants: 2142, totalMakers: 169, countryCounts: {}, makerCounts: {} } });
+        });
+      }, []);
+
+      const loadData = useCallback(async () => {
+        setLoading(true);
+        try {
+          const [supRes, oemRes] = await Promise.all([
+            fetch("suppliers.json").then(r => r.json()),
+            fetch("oem_plants.json").then(r => r.json()),
+          ]);
+          setSuppliers(supRes); setOemPlants(oemRes);
+        } catch (e) { console.error("Failed to load data:", e); }
+        setLoading(false);
+      }, []);
+
+      const handleUnlock = () => { setIsUnlocked(true); setView("dashboard"); loadData(); };
+
+      const filteredSup = useMemo(() => {
+        if (!suppliers.length) return [];
+        const q = supSearch.toLowerCase();
+        return suppliers.filter(s => {
+          if (q && !(s.n || "").toLowerCase().includes(q) && !(s.a || "").toLowerCase().includes(q) && !(s.u || "").toLowerCase().includes(q)) return false;
+          if (supCountry && (s.c || "") !== supCountry) return false;
+          if (supCategory && !(s.cat || []).some(c => c.includes(supCategory))) return false;
+          return true;
+        });
+      }, [suppliers, supSearch, supCountry, supCategory]);
+
+      const filteredOem = useMemo(() => {
+        if (!oemPlants.length) return [];
+        const q = oemSearch.toLowerCase();
+        return oemPlants.filter(p => {
+          if (q && !(p.m || "").toLowerCase().includes(q) && !(p.p || "").toLowerCase().includes(q) && !(p.v || "").toLowerCase().includes(q)) return false;
+          if (oemCountry && (p.c || "") !== oemCountry) return false;
+          if (oemMaker && (p.m || "") !== oemMaker) return false;
+          return true;
+        });
+      }, [oemPlants, oemSearch, oemCountry, oemMaker]);
+
+      const supCountries = useMemo(() => [...new Set(suppliers.map(s => s.c).filter(Boolean))].sort(), [suppliers]);
+      const supCategories = useMemo(() => { const cats = new Set(); suppliers.forEach(s => (s.cat || []).forEach(c => cats.add(c))); return [...cats].sort(); }, [suppliers]);
+      const oemCountries = useMemo(() => [...new Set(oemPlants.map(p => p.c).filter(Boolean))].sort(), [oemPlants]);
+      const oemMakers = useMemo(() => [...new Set(oemPlants.map(p => p.m).filter(Boolean))].sort(), [oemPlants]);
+
+      useEffect(() => { setSupPage(1); }, [supSearch, supCountry, supCategory]);
+      useEffect(() => { setOemPage(1); }, [oemSearch, oemCountry, oemMaker]);
+
+      const supPageData = filteredSup.slice((supPage - 1) * PAGE_SIZE, supPage * PAGE_SIZE);
+      const oemPageData = filteredOem.slice((oemPage - 1) * PAGE_SIZE, oemPage * PAGE_SIZE);
+
+      // ─── NavBar ──────────────────────────────────────────────
+      const NavBar = () => (
+        <nav style={styles.nav}>
+          <div style={styles.navInner}>
+            <div style={styles.logo}>
+              <span style={styles.logoAuto}>AUTO</span>
+              <span style={styles.logoBook}>BOOK</span>
+              <span style={{ color: "#667", fontSize: 11, marginLeft: 8, alignSelf: "flex-end" }}>PLATFORM</span>
+            </div>
+            <div style={styles.navLinks}>
+              {isUnlocked ? (<>
+                <button style={styles.navLink} onClick={() => setView("dashboard")}>Dashboard</button>
+                <button style={styles.navLink} onClick={() => setView("countries")}>Countries</button>
+                <button style={styles.navLink} onClick={() => setView("suppliers")}>Suppliers</button>
+                <button style={styles.navLink} onClick={() => setView("oem")}>OEM Plants</button>
+                <span style={{ ...styles.navLink, color: GOLD }}>● Full Access</span>
+              </>) : (<>
+                <button style={styles.navLink} onClick={() => setView("landing")}>Home</button>
+                <button style={styles.navBtn} onClick={handleUnlock}>Get Full Access</button>
+              </>)}
+            </div>
+          </div>
+        </nav>
+      );
+
+      // ─── Landing ─────────────────────────────────────────────
+      const Landing = () => (
+        <>
+          <div style={styles.hero}>
+            <div style={styles.container}>
+              <div style={styles.heroBadge}>GLOBAL EDITION 2026</div>
+              <h1 style={styles.heroTitle}><span style={{ color: "white" }}>AUTO</span><span style={{ color: GOLD }}>BOOK</span></h1>
+              <p style={styles.heroSub}>The world's most comprehensive automotive supply chain database. Search, filter, and export data on 36,000+ companies across 97 countries.</p>
+              <div style={styles.statRow}>
+                <div style={styles.stat}><div style={styles.statNum}>{stats?.suppliers?.totalSuppliers?.toLocaleString() || "36,058"}</div><div style={styles.statLabel}>Supplier Companies</div></div>
+                <div style={styles.stat}><div style={styles.statNum}>{stats?.oem?.totalPlants?.toLocaleString() || "2,142"}</div><div style={styles.statLabel}>OEM Plants</div></div>
+                <div style={styles.stat}><div style={styles.statNum}>{stats?.suppliers?.totalCountries || "97"}</div><div style={styles.statLabel}>Countries</div></div>
+                <div style={styles.stat}><div style={styles.statNum}>{stats?.oem?.totalMakers || "169"}</div><div style={styles.statLabel}>OEM Brands</div></div>
+              </div>
+              <div style={{ marginTop: 32, display: "flex", justifyContent: "center", gap: 10, flexWrap: "wrap" }}>
+                {["China", "Japan", "USA", "Germany", "India", "Thailand", "Mexico", "Korea", "France", "Brazil", "UK", "Indonesia"].map(c => (
+                  <div key={c} style={{ textAlign: "center" }}><FlagIcon country={c} size={40} /><div style={{ fontSize: 10, color: "#8899aa", marginTop: 4 }}>{c}</div></div>
+                ))}
+              </div>
+              <div style={{ marginTop: 32, display: "flex", gap: 16, justifyContent: "center", flexWrap: "wrap" }}>
+                <button style={{ ...styles.navBtn, fontSize: 16, padding: "14px 36px", borderRadius: 8 }} onClick={handleUnlock}>Access Full Database — €2,499</button>
+                <button style={{ ...styles.navBtn, background: "transparent", color: "white", border: "2px solid rgba(255,255,255,0.3)", fontSize: 16, padding: "14px 36px", borderRadius: 8 }}
+                  onClick={() => document.getElementById("preview-section")?.scrollIntoView({ behavior: "smooth" })}>Browse Free Preview ↓</button>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ ...styles.section, background: "white" }}>
+            <div style={styles.container}>
+              <h2 style={styles.sectionTitle}>What You Get</h2>
+              <p style={styles.sectionSub}>Automotive intelligence at your fingertips — browser-based, searchable, always current.</p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20 }}>
+                {[
+                  { title: "Search 36,058 Suppliers", desc: "Filter by country, product category, or company name. Full contact details, addresses, and certifications." },
+                  { title: "2,142 OEM Plants", desc: "Every manufacturing plant from Toyota to Tesla. Search by maker, country, or vehicle model." },
+                  { title: "Export to CSV", desc: "Download any filtered result set as CSV. Import directly into Salesforce, HubSpot, or any CRM." },
+                  { title: "97 Countries Covered", desc: "From China (12,996 companies) to Vietnam (258). Complete global coverage of the automotive supply chain." },
+                  { title: "Always Up to Date", desc: "AI-powered continuous updates. New companies added, defunct ones flagged, contacts refreshed." },
+                  { title: "Less Than €0.07/Company", desc: "Access 36,058 qualified automotive companies for €2,499. That's less than 7 cents per target account." },
+                ].map((f, i) => (
+                  <div key={i} style={styles.card}><h3 style={{ color: NAVY, fontSize: 18, fontWeight: 700, margin: "0 0 8px" }}>{f.title}</h3><p style={{ color: "#555", fontSize: 14, margin: 0, lineHeight: 1.5 }}>{f.desc}</p></div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div id="preview-section" style={{ ...styles.section, background: LIGHT }}>
+            <div style={styles.container}>
+              <h2 style={styles.sectionTitle}>Free Preview</h2>
+              <p style={styles.sectionSub}>Browse a sample of our data. Full access requires a license.</p>
+              <div style={{ position: "relative", borderRadius: 12, overflow: "hidden" }}>
+                <div style={{ overflowX: "auto", ...styles.card }}>
+                  <h3 style={{ color: NAVY, margin: "0 0 12px" }}>Sample Supplier Data (50 of 36,058)</h3>
+                  <table style={styles.table}>
+                    <thead><tr>
+                      <th style={styles.th}>Company</th><th style={styles.th}>Country</th><th style={styles.th}>Address</th><th style={styles.th}>Phone</th><th style={styles.th}>Website</th><th style={styles.th}>Category</th>
+                    </tr></thead>
+                    <tbody>
+                      {[
+                        { n: "Continental AG", c: "Germany", a: "Vahrenwalder Str. 9, 30165 Hannover", p: "+49-511-938-01", u: "continental.com", cat: ["Electronics"] },
+                        { n: "Denso Corporation", c: "Japan", a: "1-1 Showa-cho, Kariya, Aichi 448-8661", p: "+81-566-25-5511", u: "denso.com", cat: ["Engine"] },
+                        { n: "ZF Friedrichshafen", c: "Germany", a: "Löwentaler Str. 20, 88046 Friedrichshafen", p: "+49-7541-77-0", u: "zf.com", cat: ["Transmission"] },
+                        { n: "Aptiv PLC", c: "Ireland", a: "5 Hanover Quay, Dublin", p: "+353-1-259-7000", u: "aptiv.com", cat: ["Electronics"] },
+                        { n: "Magna International", c: "Canada", a: "337 Magna Dr., Aurora, ON", p: "+1-905-726-2462", u: "magna.com", cat: ["Body"] },
+                        { n: "AAPICO Hitech", c: "Thailand", a: "99 Moo 1, Hitech Industrial Estate", p: "+66-2-709-4466", u: "aapico.com", cat: ["Body"] },
+                        { n: "Hyundai Mobis", c: "Korea", a: "203, Teheran-ro, Gangnam-gu, Seoul", p: "+82-2-2018-5114", u: "mobis.co.kr", cat: ["Chassis"] },
+                        { n: "Bosch", c: "Germany", a: "Robert-Bosch-Platz 1, 70839 Gerlingen", p: "+49-711-811-0", u: "bosch.com", cat: ["Electronics"] },
+                      ].map((r, i) => (
+                        <tr key={i} style={{ background: i % 2 ? "#f8f9fb" : "white" }}>
+                          <td style={{ ...styles.td, fontWeight: 600, color: NAVY }}>{r.n}</td>
+                          <td style={styles.td}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><FlagIcon country={r.c} size={18} />{r.c}</span></td>
+                          <td style={{ ...styles.td, fontSize: 12 }}>{r.a}</td>
+                          <td style={{ ...styles.td, fontSize: 12 }}>{r.p}</td>
+                          <td style={styles.td}><span style={styles.tdLink}>{r.u}</span></td>
+                          <td style={styles.td}><span style={{ background: "#e8f0fe", color: BLUE, padding: "2px 8px", borderRadius: 4, fontSize: 11 }}>{r.cat[0]}</span></td>
+                        </tr>
+                      ))}
+                      {[1,2,3,4,5].map(i => (
+                        <tr key={`blur${i}`} style={{ ...styles.blur }}>
+                          <td style={{ ...styles.td, fontWeight: 600, color: NAVY }}>Company Name {i}</td>
+                          <td style={styles.td}>Country</td><td style={styles.td}>Address details here...</td>
+                          <td style={styles.td}>+XX-XXX-XXXX</td><td style={styles.td}>website.com</td><td style={styles.td}>Category</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 160, background: "linear-gradient(transparent, rgba(245,246,250,0.95) 70%)", display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: 24 }}>
+                  <button style={{ ...styles.navBtn, fontSize: 16, padding: "14px 36px" }} onClick={handleUnlock}>Unlock Full Database — €2,499</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ ...styles.section, background: "white" }}>
+            <div style={styles.container}>
+              <h2 style={{ ...styles.sectionTitle, textAlign: "center" }}>Simple Pricing</h2>
+              <p style={{ ...styles.sectionSub, textAlign: "center" }}>One price. Full access. No hidden fees.</p>
+              <div style={{ display: "flex", gap: 24, justifyContent: "center", flexWrap: "wrap", maxWidth: 800, margin: "0 auto" }}>
+                <div style={{ ...styles.cardGold, flex: 1, minWidth: 300, textAlign: "center" }}>
+                  <div style={{ color: GOLD, fontSize: 13, fontWeight: 700, marginBottom: 8 }}>DIGITAL EDITION</div>
+                  <div style={{ fontSize: 48, fontWeight: 900, color: NAVY, fontFamily: "Arial" }}>€2,499</div>
+                  <div style={{ color: "#888", fontSize: 14, marginBottom: 24 }}>Annual license • Updates included</div>
+                  <ul style={{ textAlign: "left", listStyle: "none", padding: 0, margin: "0 0 24px" }}>
+                    {["Full browser access to 36,058 suppliers", "2,142 OEM plant locations", "Search, filter & export to CSV", "97 countries covered", "Annual data updates", "CRM-ready data exports"].map((item, i) => (
+                      <li key={i} style={{ padding: "6px 0", color: "#444", fontSize: 14, display: "flex", gap: 8, alignItems: "flex-start" }}><span style={{ color: "#28a745", fontWeight: 700 }}>✓</span> {item}</li>
+                    ))}
+                  </ul>
+                  <button style={{ ...styles.navBtn, width: "100%", fontSize: 16, padding: "14px 0" }} onClick={handleUnlock}>Get Full Access</button>
+                  <div style={{ color: "#999", fontSize: 12, marginTop: 12 }}>Secure payment via PayPal</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <footer style={styles.footer}>
+            <div style={styles.container}>
+              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: 4, marginBottom: 12 }}>
+                <span style={{ fontSize: 20, fontWeight: 900, color: "white", fontFamily: "Arial" }}>AUTO</span>
+                <span style={{ fontSize: 20, fontWeight: 900, color: GOLD, fontFamily: "Arial" }}>BOOK</span>
+              </div>
+              <p>Automotive Intelligence for Professionals — Since 2010</p>
+              <p style={{ marginTop: 8 }}>© 2026 Ulrich Kaiser • uli@autobook.biz • www.autobook.biz</p>
+            </div>
+          </footer>
+        </>
+      );
+
+      // ─── Dashboard ─────────────────────────────────────────────
+      const Dashboard = () => {
+        const topCountries = stats?.suppliers?.countryCounts ? Object.entries(stats.suppliers.countryCounts).slice(0, 10) : [];
+        const maxCount = topCountries.length ? topCountries[0][1] : 1;
+        return (
+          <div>
+            <h1 style={{ ...styles.sectionTitle, marginBottom: 24 }}>Dashboard</h1>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, marginBottom: 32 }}>
+              {[
+                { label: "Total Suppliers", value: suppliers.length.toLocaleString(), color: BLUE },
+                { label: "OEM Plants", value: oemPlants.length.toLocaleString(), color: NAVY },
+                { label: "Countries", value: stats?.suppliers?.totalCountries || 97, color: GOLD },
+                { label: "OEM Makers", value: stats?.oem?.totalMakers || 169, color: BLUE },
+              ].map((s, i) => (
+                <div key={i} style={{ ...styles.card, borderTop: `4px solid ${s.color}` }}>
+                  <div style={{ fontSize: 32, fontWeight: 900, color: s.color, fontFamily: "Arial" }}>{s.value}</div>
+                  <div style={{ fontSize: 13, color: "#888", marginTop: 4 }}>{s.label}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16, marginBottom: 32 }}>
+              <div style={{ ...styles.card, cursor: "pointer" }} onClick={() => setView("suppliers")}><h3 style={{ color: NAVY, margin: "0 0 8px" }}>🔍 Search Suppliers</h3><p style={{ color: "#666", fontSize: 14, margin: 0 }}>Browse and filter {suppliers.length.toLocaleString()} automotive supplier companies worldwide.</p></div>
+              <div style={{ ...styles.card, cursor: "pointer" }} onClick={() => setView("countries")}><h3 style={{ color: NAVY, margin: "0 0 8px" }}>🌍 Browse by Country</h3><p style={{ color: "#666", fontSize: 14, margin: 0 }}>Explore automotive companies across {stats?.suppliers?.totalCountries || 97} countries with flag icons.</p></div>
+              <div style={{ ...styles.card, cursor: "pointer" }} onClick={() => setView("oem")}><h3 style={{ color: NAVY, margin: "0 0 8px" }}>🏭 Browse OEM Plants</h3><p style={{ color: "#666", fontSize: 14, margin: 0 }}>Explore {oemPlants.length.toLocaleString()} OEM manufacturing plants from {stats?.oem?.totalMakers || 169} makers.</p></div>
+            </div>
+            <div style={styles.card}>
+              <h3 style={{ color: NAVY, margin: "0 0 16px" }}>Top 10 Countries by Supplier Count</h3>
+              {topCountries.map(([country, count]) => (
+                <div key={country} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8, cursor: "pointer" }} onClick={() => { setSupCountry(country); setView("suppliers"); }}>
+                  <FlagIcon country={country} size={24} />
+                  <div style={{ width: 80, fontSize: 13, color: "#555", fontWeight: 500, flexShrink: 0 }}>{country}</div>
+                  <div style={{ flex: 1, height: 24, background: "#eee", borderRadius: 4, overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${(count / maxCount) * 100}%`, background: `linear-gradient(90deg, ${NAVY}, ${BLUE})`, borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "flex-end", paddingRight: 8 }}>
+                      <span style={{ color: "white", fontSize: 11, fontWeight: 700 }}>{count.toLocaleString()}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      };
+
+      // ─── Countries view ───────────────────────────────────────
+      const CountriesView = () => {
+        const [countrySearch, setCountrySearch] = useState("");
+        const countryData = useMemo(() => {
+          const map = {};
+          suppliers.forEach(s => { const c = s.c || "Unknown"; if (!map[c]) map[c] = { name: c, suppliers: 0, oem: 0 }; map[c].suppliers++; });
+          oemPlants.forEach(p => { const c = p.c || "Unknown"; if (!map[c]) map[c] = { name: c, suppliers: 0, oem: 0 }; map[c].oem++; });
+          return Object.values(map).map(c => ({ ...c, total: c.suppliers + c.oem })).sort((a, b) => b.total - a.total);
+        }, [suppliers, oemPlants]);
+        const filtered = countrySearch ? countryData.filter(c => c.name.toLowerCase().includes(countrySearch.toLowerCase())) : countryData;
+        const handleCountryClick = (country) => { setSupCountry(country); setSupSearch(""); setSupCategory(""); setView("suppliers"); };
+        return (
+          <div>
+            <h1 style={{ ...styles.sectionTitle, marginBottom: 8 }}>Browse by Country</h1>
+            <p style={{ color: "#667", fontSize: 15, marginBottom: 20 }}>{countryData.length} countries with automotive companies. Click any country to browse its suppliers.</p>
+            <div style={{ marginBottom: 24 }}><input style={{ ...styles.input, maxWidth: 400 }} placeholder="Search countries..." value={countrySearch} onChange={e => setCountrySearch(e.target.value)} /></div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 16 }}>
+              {filtered.map(c => (
+                <div key={c.name} onClick={() => handleCountryClick(c.name)}
+                  style={{ ...styles.card, display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "all 0.2s", padding: "16px 20px" }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = GOLD; e.currentTarget.style.boxShadow = "0 4px 16px rgba(200,169,81,0.2)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = "#e8eaef"; e.currentTarget.style.boxShadow = "0 2px 12px rgba(0,0,0,0.06)"; }}>
+                  <FlagIcon country={c.name} size={48} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: NAVY, marginBottom: 4 }}>{c.name}</div>
+                    <div style={{ display: "flex", gap: 12, fontSize: 12, color: "#888" }}>
+                      <span><span style={{ color: BLUE, fontWeight: 700, fontSize: 14 }}>{c.suppliers.toLocaleString()}</span> suppliers</span>
+                      {c.oem > 0 && <span><span style={{ color: NAVY, fontWeight: 700, fontSize: 14 }}>{c.oem}</span> OEM plants</span>}
+                    </div>
+                  </div>
+                  <div style={{ color: "#ccc", fontSize: 20 }}>→</div>
+                </div>
+              ))}
+            </div>
+            {filtered.length === 0 && <div style={{ ...styles.card, textAlign: "center", padding: 40, color: "#999" }}>No countries match "{countrySearch}"</div>}
+          </div>
+        );
+      };
+
+      // ─── Suppliers view ────────────────────────────────────────
+      const SuppliersView = () => (
+        <div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
+            <h1 style={{ ...styles.sectionTitle, margin: 0 }}>Supplier Companies</h1>
+            <button style={styles.searchBtn} onClick={() => exportCSV(filteredSup, "autobook_suppliers_export.csv", [
+              { label: "Company", get: r => r.n }, { label: "Country", get: r => r.c }, { label: "Address", get: r => r.a },
+              { label: "Phone", get: r => r.p }, { label: "Website", get: r => r.u }, { label: "Categories", get: r => (r.cat || []).join("; ") },
+              { label: "Employees", get: r => r.emp }, { label: "Quality Cert", get: r => r.q },
+            ])}>↓ Export CSV ({filteredSup.length.toLocaleString()})</button>
+          </div>
+          <div style={styles.searchBar}>
+            <input style={styles.input} placeholder="Search company name, address, or website..." value={supSearch} onChange={e => setSupSearch(e.target.value)} />
+            <select style={styles.select} value={supCountry} onChange={e => setSupCountry(e.target.value)}>
+              <option value="">All Countries ({supCountries.length})</option>
+              {supCountries.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <select style={styles.select} value={supCategory} onChange={e => setSupCategory(e.target.value)}>
+              <option value="">All Categories ({supCategories.length})</option>
+              {supCategories.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            {(supSearch || supCountry || supCategory) && <button style={{ ...styles.searchBtn, background: "#e74c3c" }} onClick={() => { setSupSearch(""); setSupCountry(""); setSupCategory(""); }}>Clear</button>}
+          </div>
+          <div style={{ ...styles.card, padding: 0, overflow: "hidden" }}>
+            <div style={{ overflowX: "auto" }}>
+              <table style={styles.table}>
+                <thead><tr><th style={styles.th}>Company</th><th style={styles.th}>Country</th><th style={styles.th}>Address</th><th style={styles.th}>Phone</th><th style={styles.th}>Website</th><th style={styles.th}>Categories</th></tr></thead>
+                <tbody>
+                  {supPageData.length === 0 ? <tr><td colSpan={6} style={{ ...styles.td, textAlign: "center", color: "#999", padding: 40 }}>No suppliers match your filters.</td></tr>
+                  : supPageData.map((r, i) => (
+                    <tr key={i} style={{ background: i % 2 ? "#f8f9fb" : "white" }}>
+                      <td style={{ ...styles.td, fontWeight: 600, color: NAVY, minWidth: 180 }}>{r.n || "—"}</td>
+                      <td style={{ ...styles.td, whiteSpace: "nowrap" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><FlagIcon country={r.c} size={18} />{r.c || "—"}</span></td>
+                      <td style={{ ...styles.td, fontSize: 12, maxWidth: 260 }}>{r.a || "—"}</td>
+                      <td style={{ ...styles.td, fontSize: 12, whiteSpace: "nowrap" }}>{r.p || "—"}</td>
+                      <td style={styles.td}>{r.u ? <a href={r.u.startsWith("http") ? r.u : `https://${r.u}`} target="_blank" rel="noreferrer" style={styles.tdLink}>{r.u.replace(/^https?:\/\//, "").replace(/\/$/, "")}</a> : "—"}</td>
+                      <td style={styles.td}><div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>{(r.cat || []).slice(0, 3).map((c, j) => <span key={j} style={{ background: "#e8f0fe", color: BLUE, padding: "2px 6px", borderRadius: 4, fontSize: 11, whiteSpace: "nowrap" }}>{c}</span>)}</div></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <Pagination total={filteredSup.length} page={supPage} setPage={setSupPage} />
+        </div>
+      );
+
+      // ─── OEM view ──────────────────────────────────────────────
+      const OemView = () => (
+        <div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
+            <h1 style={{ ...styles.sectionTitle, margin: 0 }}>OEM Manufacturing Plants</h1>
+            <button style={styles.searchBtn} onClick={() => exportCSV(filteredOem, "autobook_oem_export.csv", [
+              { label: "Maker", get: r => r.m }, { label: "Country", get: r => r.c }, { label: "Plant", get: r => r.p },
+              { label: "Address", get: r => r.a }, { label: "Vehicle Models", get: r => r.v }, { label: "URL", get: r => r.u },
+            ])}>↓ Export CSV ({filteredOem.length.toLocaleString()})</button>
+          </div>
+          <div style={styles.searchBar}>
+            <input style={styles.input} placeholder="Search maker, plant name, or vehicle model..." value={oemSearch} onChange={e => setOemSearch(e.target.value)} />
+            <select style={styles.select} value={oemMaker} onChange={e => setOemMaker(e.target.value)}>
+              <option value="">All Makers ({oemMakers.length})</option>
+              {oemMakers.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+            <select style={styles.select} value={oemCountry} onChange={e => setOemCountry(e.target.value)}>
+              <option value="">All Countries ({oemCountries.length})</option>
+              {oemCountries.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            {(oemSearch || oemCountry || oemMaker) && <button style={{ ...styles.searchBtn, background: "#e74c3c" }} onClick={() => { setOemSearch(""); setOemCountry(""); setOemMaker(""); }}>Clear</button>}
+          </div>
+          <div style={{ ...styles.card, padding: 0, overflow: "hidden" }}>
+            <div style={{ overflowX: "auto" }}>
+              <table style={styles.table}>
+                <thead><tr><th style={styles.th}>Maker</th><th style={styles.th}>Country</th><th style={styles.th}>Plant Name</th><th style={styles.th}>Address</th><th style={styles.th}>Vehicle Models</th><th style={styles.th}>Website</th></tr></thead>
+                <tbody>
+                  {oemPageData.length === 0 ? <tr><td colSpan={6} style={{ ...styles.td, textAlign: "center", color: "#999", padding: 40 }}>No plants match your filters.</td></tr>
+                  : oemPageData.map((r, i) => (
+                    <tr key={i} style={{ background: i % 2 ? "#f8f9fb" : "white" }}>
+                      <td style={{ ...styles.td, fontWeight: 600, color: NAVY, whiteSpace: "nowrap" }}>{r.m || "—"}</td>
+                      <td style={{ ...styles.td, whiteSpace: "nowrap" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><FlagIcon country={r.c} size={18} />{r.c || "—"}</span></td>
+                      <td style={{ ...styles.td, minWidth: 160 }}>{r.p || "—"}</td>
+                      <td style={{ ...styles.td, fontSize: 12, maxWidth: 240 }}>{r.a || "—"}</td>
+                      <td style={{ ...styles.td, fontSize: 12, maxWidth: 200 }}>{r.v || "—"}</td>
+                      <td style={styles.td}>{r.u ? <a href={r.u.startsWith("http") ? r.u : `https://${r.u}`} target="_blank" rel="noreferrer" style={styles.tdLink}>{r.u.replace(/^https?:\/\//, "").split("/")[0]}</a> : "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <Pagination total={filteredOem.length} page={oemPage} setPage={setOemPage} />
+        </div>
+      );
+
+      // ─── Platform layout ───────────────────────────────────────
+      const PlatformLayout = ({ children }) => (
+        <div style={{ display: "flex", minHeight: "calc(100vh - 55px)" }}>
+          <div style={styles.sidebar}>
+            <div style={{ padding: "0 24px 20px", borderBottom: "1px solid rgba(255,255,255,0.1)", marginBottom: 12 }}>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 2 }}>
+                <span style={{ fontSize: 18, fontWeight: 900, color: "white", fontFamily: "Arial" }}>AUTO</span>
+                <span style={{ fontSize: 18, fontWeight: 900, color: GOLD, fontFamily: "Arial" }}>BOOK</span>
+              </div>
+              <div style={{ fontSize: 11, color: "#667", marginTop: 4 }}>Automotive Intelligence Platform</div>
+            </div>
+            <button style={styles.sideItem(view === "dashboard")} onClick={() => setView("dashboard")}>📊 Dashboard</button>
+            <button style={styles.sideItem(view === "countries")} onClick={() => setView("countries")}>🌍 Browse by Country</button>
+            <button style={styles.sideItem(view === "suppliers")} onClick={() => setView("suppliers")}>🏢 Suppliers ({suppliers.length.toLocaleString()})</button>
+            <button style={styles.sideItem(view === "oem")} onClick={() => setView("oem")}>🏭 OEM Plants ({oemPlants.length.toLocaleString()})</button>
+            <div style={{ borderTop: "1px solid rgba(255,255,255,0.1)", marginTop: 20, paddingTop: 20 }}>
+              <button style={styles.sideItem(false)} onClick={() => { setIsUnlocked(false); setView("landing"); }}>← Back to Home</button>
+            </div>
+          </div>
+          <div style={styles.mainContent}>{children}</div>
+        </div>
+      );
+
+      // ─── Loading ───────────────────────────────────────────────
+      if (loading) return (
+        <div style={styles.app}><NavBar />
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "60vh" }}>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>⏳</div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: NAVY }}>Loading AutoBook Data...</div>
+            <div style={{ color: "#888", marginTop: 8 }}>38,200+ records across 97 countries</div>
+          </div>
+        </div>
+      );
+
+      // ─── Main render ───────────────────────────────────────────
+      return (
+        <div style={styles.app}>
+          <NavBar />
+          {!isUnlocked ? <Landing /> : (
+            <PlatformLayout>
+              {view === "dashboard" && <Dashboard />}
+              {view === "countries" && <CountriesView />}
+              {view === "suppliers" && <SuppliersView />}
+              {view === "oem" && <OemView />}
+            </PlatformLayout>
+          )}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<AutoBookPlatform />);
+  </script>
+</body>
+</html>
