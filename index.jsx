@@ -231,7 +231,7 @@ export default function AutoBookPlatform() {
     }).catch(() => {
       // Fallback stats if file not available
       setStats({
-        suppliers: { totalSuppliers: 36058, totalCountries: 97, countryCounts: {}, categoryCounts: {} },
+        suppliers: { totalSuppliers: 35567, totalCountries: 97, countryCounts: {}, categoryCounts: {} },
         oem: { totalPlants: 2142, totalMakers: 169, countryCounts: {}, makerCounts: {} }
       });
     });
@@ -348,7 +348,7 @@ export default function AutoBookPlatform() {
           </p>
           <div style={styles.statRow}>
             <div style={styles.stat}>
-              <div style={styles.statNum}>{stats?.suppliers?.totalSuppliers?.toLocaleString() || "36,058"}</div>
+              <div style={styles.statNum}>{stats?.suppliers?.totalSuppliers?.toLocaleString() || "35,567"}</div>
               <div style={styles.statLabel}>Supplier Companies</div>
             </div>
             <div style={styles.stat}>
@@ -393,12 +393,12 @@ export default function AutoBookPlatform() {
           <p style={styles.sectionSub}>Automotive intelligence at your fingertips — browser-based, searchable, always current.</p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20 }}>
             {[
-              { title: "Search 36,058 Suppliers", desc: "Filter by country, product category, or company name. Full contact details, addresses, and certifications." },
+              { title: "Search 35,567 Suppliers", desc: "Filter by country, product category, or company name. Full contact details, addresses, and certifications." },
               { title: "2,142 OEM Plants", desc: "Every manufacturing plant from Toyota to Tesla. Search by maker or country." },
               { title: "Export to CSV", desc: "Download any filtered result set as CSV. Import directly into Salesforce, HubSpot, or any CRM." },
               { title: "97 Countries Covered", desc: "From China (12,996 companies) to Vietnam (258). Complete global coverage of the automotive supply chain." },
               { title: "Always Up to Date", desc: "AI-powered continuous updates. New companies added, defunct ones flagged, contacts refreshed." },
-              { title: "Less Than €0.07/Company", desc: "Access 36,058 qualified automotive companies for €2,499. That's less than 7 cents per target account." },
+              { title: "Less Than €0.07/Company", desc: "Access 35,567 qualified automotive companies for €2,499. That's less than 7 cents per target account." },
             ].map((f, i) => (
               <div key={i} style={styles.card}>
                 <h3 style={{ color: NAVY, fontSize: 18, fontWeight: 700, margin: "0 0 8px" }}>{f.title}</h3>
@@ -418,7 +418,7 @@ export default function AutoBookPlatform() {
           {/* Preview table with blur overlay */}
           <div style={{ position: "relative", borderRadius: 12, overflow: "hidden" }}>
             <div style={{ overflowX: "auto", ...styles.card }}>
-              <h3 style={{ color: NAVY, margin: "0 0 12px" }}>Sample Supplier Data (50 of 36,058)</h3>
+              <h3 style={{ color: NAVY, margin: "0 0 12px" }}>Sample Supplier Data (50 of 35,567)</h3>
               <table style={styles.table}>
                 <thead>
                   <tr>
@@ -485,7 +485,7 @@ export default function AutoBookPlatform() {
               <div style={{ fontSize: 48, fontWeight: 900, color: NAVY, fontFamily: "Arial" }}>€2,499</div>
               <div style={{ color: "#888", fontSize: 14, marginBottom: 24 }}>Annual license • Updates included</div>
               <ul style={{ textAlign: "left", listStyle: "none", padding: 0, margin: "0 0 24px" }}>
-                {["Full browser access to 36,058 suppliers", "2,142 OEM plant locations", "Search, filter & export to CSV", "97 countries covered", "Annual data updates", "CRM-ready data exports"].map((item, i) => (
+                {["Full browser access to 35,567 suppliers", "2,142 OEM plant locations", "Search, filter & export to CSV", "97 countries covered", "Annual data updates", "CRM-ready data exports"].map((item, i) => (
                   <li key={i} style={{ padding: "6px 0", color: "#444", fontSize: 14, display: "flex", gap: 8, alignItems: "flex-start" }}>
                     <span style={{ color: "#28a745", fontWeight: 700 }}>✓</span> {item}
                   </li>
