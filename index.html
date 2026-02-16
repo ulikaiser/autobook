@@ -69,6 +69,17 @@
       "Zimbabwe": "zw", "Botswana": "bw", "Namibia": "na", "Madagascar": "mg",
     };
 
+    // Normalize variant country names to a single canonical name
+    const COUNTRY_ALIASES = {
+      "U.S.A.": "USA", "United States": "USA", "United States of America": "USA",
+      "United Kingdom": "UK", "Great Britain": "UK",
+      "Republic of Korea": "Korea", "South Korea": "Korea",
+      "Peoples Republic of China": "China", "P.R.C.": "China", "PRC": "China",
+      "Czech Republic": "Czech Republic", "Czechia": "Czech Republic",
+      "U.A.E.": "UAE", "United Arab Emirates": "UAE",
+    };
+    const normalizeCountry = (c) => COUNTRY_ALIASES[c] || c;
+
     const FlagIcon = ({ country, size = 40 }) => {
       const code = COUNTRY_CODES[country];
       if (!code) return <div style={{ width: size, height: size, borderRadius: "50%", background: "#ddd", display: "flex", alignItems: "center", justifyContent: "center", fontSize: size * 0.35, color: "#888", fontWeight: 700, flexShrink: 0 }}>🌐</div>;
@@ -186,7 +197,20 @@
       const [oemPage, setOemPage] = useState(1);
 
       useEffect(() => {
-        fetch("stats.json").then(r => r.json()).then(setStats).catch(() => {
+        fetch("stats.json").then(r => r.json()).then(data => {
+          // Normalize country names in stats
+          const normCounts = (counts) => {
+            const merged = {};
+            Object.entries(counts || {}).forEach(([k, v]) => {
+              const nk = normalizeCountry(k);
+              merged[nk] = (merged[nk] || 0) + v;
+            });
+            return Object.fromEntries(Object.entries(merged).sort((a, b) => b[1] - a[1]));
+          };
+          if (data.suppliers?.countryCounts) data.suppliers.countryCounts = normCounts(data.suppliers.countryCounts);
+          if (data.oem?.countryCounts) data.oem.countryCounts = normCounts(data.oem.countryCounts);
+          setStats(data);
+        }).catch(() => {
           setStats({ suppliers: { totalSuppliers: 36058, totalCountries: 97, countryCounts: {}, categoryCounts: {} }, oem: { totalPlants: 2142, totalMakers: 169, countryCounts: {}, makerCounts: {} } });
         });
       }, []);
@@ -198,6 +222,8 @@
             fetch("suppliers.json").then(r => r.json()),
             fetch("oem_plants.json").then(r => r.json()),
           ]);
+          supRes.forEach(s => { if (s.c) s.c = normalizeCountry(s.c); });
+          oemRes.forEach(p => { if (p.c) p.c = normalizeCountry(p.c); });
           setSuppliers(supRes); setOemPlants(oemRes);
         } catch (e) { console.error("Failed to load data:", e); }
         setLoading(false);
@@ -220,7 +246,7 @@
         if (!oemPlants.length) return [];
         const q = oemSearch.toLowerCase();
         return oemPlants.filter(p => {
-          if (q && !(p.m || "").toLowerCase().includes(q) && !(p.p || "").toLowerCase().includes(q) && !(p.v || "").toLowerCase().includes(q)) return false;
+          if (q && !(p.m || "").toLowerCase().includes(q) && !(p.p || "").toLowerCase().includes(q)) return false;
           if (oemCountry && (p.c || "") !== oemCountry) return false;
           if (oemMaker && (p.m || "") !== oemMaker) return false;
           return true;
@@ -253,9 +279,11 @@
                 <button style={styles.navLink} onClick={() => setView("countries")}>Countries</button>
                 <button style={styles.navLink} onClick={() => setView("suppliers")}>Suppliers</button>
                 <button style={styles.navLink} onClick={() => setView("oem")}>OEM Plants</button>
+                <button style={{ ...styles.navLink, color: "#6cc" }} onClick={() => setView("submit")}>Submit Company Info</button>
                 <span style={{ ...styles.navLink, color: GOLD }}>● Full Access</span>
               </>) : (<>
                 <button style={styles.navLink} onClick={() => setView("landing")}>Home</button>
+                <button style={{ ...styles.navLink, color: "#6cc" }} onClick={() => setView("submit")}>Submit Company Info</button>
                 <button style={styles.navBtn} onClick={handleUnlock}>Get Full Access</button>
               </>)}
             </div>
@@ -297,7 +325,7 @@
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20 }}>
                 {[
                   { title: "Search 36,058 Suppliers", desc: "Filter by country, product category, or company name. Full contact details, addresses, and certifications." },
-                  { title: "2,142 OEM Plants", desc: "Every manufacturing plant from Toyota to Tesla. Search by maker, country, or vehicle model." },
+                  { title: "2,142 OEM Plants", desc: "Every manufacturing plant from Toyota to Tesla. Search by maker or country." },
                   { title: "Export to CSV", desc: "Download any filtered result set as CSV. Import directly into Salesforce, HubSpot, or any CRM." },
                   { title: "97 Countries Covered", desc: "From China (12,996 companies) to Vietnam (258). Complete global coverage of the automotive supply chain." },
                   { title: "Always Up to Date", desc: "AI-powered continuous updates. New companies added, defunct ones flagged, contacts refreshed." },
@@ -318,23 +346,23 @@
                   <h3 style={{ color: NAVY, margin: "0 0 12px" }}>Sample Supplier Data (50 of 36,058)</h3>
                   <table style={styles.table}>
                     <thead><tr>
-                      <th style={styles.th}>Company</th><th style={styles.th}>Country</th><th style={styles.th}>Address</th><th style={styles.th}>Phone</th><th style={styles.th}>Website</th><th style={styles.th}>Category</th>
+                      <th style={styles.th}>Company</th><th style={styles.th}>Country</th><th style={styles.th}>Email</th><th style={styles.th}>Phone</th><th style={styles.th}>Website</th><th style={styles.th}>Category</th>
                     </tr></thead>
                     <tbody>
                       {[
-                        { n: "Continental AG", c: "Germany", a: "Vahrenwalder Str. 9, 30165 Hannover", p: "+49-511-938-01", u: "continental.com", cat: ["Electronics"] },
-                        { n: "Denso Corporation", c: "Japan", a: "1-1 Showa-cho, Kariya, Aichi 448-8661", p: "+81-566-25-5511", u: "denso.com", cat: ["Engine"] },
-                        { n: "ZF Friedrichshafen", c: "Germany", a: "Löwentaler Str. 20, 88046 Friedrichshafen", p: "+49-7541-77-0", u: "zf.com", cat: ["Transmission"] },
-                        { n: "Aptiv PLC", c: "Ireland", a: "5 Hanover Quay, Dublin", p: "+353-1-259-7000", u: "aptiv.com", cat: ["Electronics"] },
-                        { n: "Magna International", c: "Canada", a: "337 Magna Dr., Aurora, ON", p: "+1-905-726-2462", u: "magna.com", cat: ["Body"] },
-                        { n: "AAPICO Hitech", c: "Thailand", a: "99 Moo 1, Hitech Industrial Estate", p: "+66-2-709-4466", u: "aapico.com", cat: ["Body"] },
-                        { n: "Hyundai Mobis", c: "Korea", a: "203, Teheran-ro, Gangnam-gu, Seoul", p: "+82-2-2018-5114", u: "mobis.co.kr", cat: ["Chassis"] },
-                        { n: "Bosch", c: "Germany", a: "Robert-Bosch-Platz 1, 70839 Gerlingen", p: "+49-711-811-0", u: "bosch.com", cat: ["Electronics"] },
+                        { n: "Continental AG", c: "Germany", ei: "info@continental.com", p: "+49-511-938-01", u: "continental.com", cat: ["Electronics"] },
+                        { n: "Denso Corporation", c: "Japan", ei: "info@denso.com", p: "+81-566-25-5511", u: "denso.com", cat: ["Engine"] },
+                        { n: "ZF Friedrichshafen", c: "Germany", ei: "info@zf.com", p: "+49-7541-77-0", u: "zf.com", cat: ["Transmission"] },
+                        { n: "Aptiv PLC", c: "Ireland", ei: "info@aptiv.com", p: "+353-1-259-7000", u: "aptiv.com", cat: ["Electronics"] },
+                        { n: "Magna International", c: "Canada", ei: "info@magna.com", p: "+1-905-726-2462", u: "magna.com", cat: ["Body"] },
+                        { n: "AAPICO Hitech", c: "Thailand", ei: "info@aapico.com", p: "+66-2-709-4466", u: "aapico.com", cat: ["Body"] },
+                        { n: "Hyundai Mobis", c: "Korea", ei: "info@mobis.co.kr", p: "+82-2-2018-5114", u: "mobis.co.kr", cat: ["Chassis"] },
+                        { n: "Bosch", c: "Germany", ei: "info@bosch.com", p: "+49-711-811-0", u: "bosch.com", cat: ["Electronics"] },
                       ].map((r, i) => (
                         <tr key={i} style={{ background: i % 2 ? "#f8f9fb" : "white" }}>
                           <td style={{ ...styles.td, fontWeight: 600, color: NAVY }}>{r.n}</td>
                           <td style={styles.td}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><FlagIcon country={r.c} size={18} />{r.c}</span></td>
-                          <td style={{ ...styles.td, fontSize: 12 }}>{r.a}</td>
+                          <td style={{ ...styles.td, fontSize: 12 }}><a href={`mailto:${r.ei}`} style={styles.tdLink}>{r.ei}</a></td>
                           <td style={{ ...styles.td, fontSize: 12 }}>{r.p}</td>
                           <td style={styles.td}><span style={styles.tdLink}>{r.u}</span></td>
                           <td style={styles.td}><span style={{ background: "#e8f0fe", color: BLUE, padding: "2px 8px", borderRadius: 4, fontSize: 11 }}>{r.cat[0]}</span></td>
@@ -343,7 +371,7 @@
                       {[1,2,3,4,5].map(i => (
                         <tr key={`blur${i}`} style={{ ...styles.blur }}>
                           <td style={{ ...styles.td, fontWeight: 600, color: NAVY }}>Company Name {i}</td>
-                          <td style={styles.td}>Country</td><td style={styles.td}>Address details here...</td>
+                          <td style={styles.td}>Country</td><td style={styles.td}>info@company.com</td>
                           <td style={styles.td}>+XX-XXX-XXXX</td><td style={styles.td}>website.com</td><td style={styles.td}>Category</td>
                         </tr>
                       ))}
@@ -479,7 +507,8 @@
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
             <h1 style={{ ...styles.sectionTitle, margin: 0 }}>Supplier Companies</h1>
             <button style={styles.searchBtn} onClick={() => exportCSV(filteredSup, "autobook_suppliers_export.csv", [
-              { label: "Company", get: r => r.n }, { label: "Country", get: r => r.c }, { label: "Address", get: r => r.a },
+              { label: "Company", get: r => r.n }, { label: "Country", get: r => r.c }, { label: "Email_Info", get: r => r.ei },
+              { label: "Email_Sales", get: r => r.es }, { label: "Address", get: r => r.a },
               { label: "Phone", get: r => r.p }, { label: "Website", get: r => r.u }, { label: "Categories", get: r => (r.cat || []).join("; ") },
               { label: "Employees", get: r => r.emp }, { label: "Quality Cert", get: r => r.q },
             ])}>↓ Export CSV ({filteredSup.length.toLocaleString()})</button>
@@ -499,14 +528,14 @@
           <div style={{ ...styles.card, padding: 0, overflow: "hidden" }}>
             <div style={{ overflowX: "auto" }}>
               <table style={styles.table}>
-                <thead><tr><th style={styles.th}>Company</th><th style={styles.th}>Country</th><th style={styles.th}>Address</th><th style={styles.th}>Phone</th><th style={styles.th}>Website</th><th style={styles.th}>Categories</th></tr></thead>
+                <thead><tr><th style={styles.th}>Company</th><th style={styles.th}>Country</th><th style={styles.th}>Email</th><th style={styles.th}>Phone</th><th style={styles.th}>Website</th><th style={styles.th}>Categories</th></tr></thead>
                 <tbody>
                   {supPageData.length === 0 ? <tr><td colSpan={6} style={{ ...styles.td, textAlign: "center", color: "#999", padding: 40 }}>No suppliers match your filters.</td></tr>
                   : supPageData.map((r, i) => (
                     <tr key={i} style={{ background: i % 2 ? "#f8f9fb" : "white" }}>
                       <td style={{ ...styles.td, fontWeight: 600, color: NAVY, minWidth: 180 }}>{r.n || "—"}</td>
                       <td style={{ ...styles.td, whiteSpace: "nowrap" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><FlagIcon country={r.c} size={18} />{r.c || "—"}</span></td>
-                      <td style={{ ...styles.td, fontSize: 12, maxWidth: 260 }}>{r.a || "—"}</td>
+                      <td style={{ ...styles.td, fontSize: 12 }}>{r.ei ? <a href={`mailto:${r.ei}`} style={styles.tdLink}>{r.ei}</a> : "—"}</td>
                       <td style={{ ...styles.td, fontSize: 12, whiteSpace: "nowrap" }}>{r.p || "—"}</td>
                       <td style={styles.td}>{r.u ? <a href={r.u.startsWith("http") ? r.u : `https://${r.u}`} target="_blank" rel="noreferrer" style={styles.tdLink}>{r.u.replace(/^https?:\/\//, "").replace(/\/$/, "")}</a> : "—"}</td>
                       <td style={styles.td}><div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>{(r.cat || []).slice(0, 3).map((c, j) => <span key={j} style={{ background: "#e8f0fe", color: BLUE, padding: "2px 6px", borderRadius: 4, fontSize: 11, whiteSpace: "nowrap" }}>{c}</span>)}</div></td>
@@ -527,11 +556,11 @@
             <h1 style={{ ...styles.sectionTitle, margin: 0 }}>OEM Manufacturing Plants</h1>
             <button style={styles.searchBtn} onClick={() => exportCSV(filteredOem, "autobook_oem_export.csv", [
               { label: "Maker", get: r => r.m }, { label: "Country", get: r => r.c }, { label: "Plant", get: r => r.p },
-              { label: "Address", get: r => r.a }, { label: "Vehicle Models", get: r => r.v }, { label: "URL", get: r => r.u },
+              { label: "Address", get: r => r.a }, { label: "URL", get: r => r.u },
             ])}>↓ Export CSV ({filteredOem.length.toLocaleString()})</button>
           </div>
           <div style={styles.searchBar}>
-            <input style={styles.input} placeholder="Search maker, plant name, or vehicle model..." value={oemSearch} onChange={e => setOemSearch(e.target.value)} />
+            <input style={styles.input} placeholder="Search maker or plant name..." value={oemSearch} onChange={e => setOemSearch(e.target.value)} />
             <select style={styles.select} value={oemMaker} onChange={e => setOemMaker(e.target.value)}>
               <option value="">All Makers ({oemMakers.length})</option>
               {oemMakers.map(m => <option key={m} value={m}>{m}</option>)}
@@ -545,7 +574,7 @@
           <div style={{ ...styles.card, padding: 0, overflow: "hidden" }}>
             <div style={{ overflowX: "auto" }}>
               <table style={styles.table}>
-                <thead><tr><th style={styles.th}>Maker</th><th style={styles.th}>Country</th><th style={styles.th}>Plant Name</th><th style={styles.th}>Address</th><th style={styles.th}>Vehicle Models</th><th style={styles.th}>Website</th></tr></thead>
+                <thead><tr><th style={styles.th}>Maker</th><th style={styles.th}>Country</th><th style={styles.th}>Plant Name</th><th style={styles.th}>Address</th><th style={styles.th}>Website</th></tr></thead>
                 <tbody>
                   {oemPageData.length === 0 ? <tr><td colSpan={6} style={{ ...styles.td, textAlign: "center", color: "#999", padding: 40 }}>No plants match your filters.</td></tr>
                   : oemPageData.map((r, i) => (
@@ -554,7 +583,6 @@
                       <td style={{ ...styles.td, whiteSpace: "nowrap" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><FlagIcon country={r.c} size={18} />{r.c || "—"}</span></td>
                       <td style={{ ...styles.td, minWidth: 160 }}>{r.p || "—"}</td>
                       <td style={{ ...styles.td, fontSize: 12, maxWidth: 240 }}>{r.a || "—"}</td>
-                      <td style={{ ...styles.td, fontSize: 12, maxWidth: 200 }}>{r.v || "—"}</td>
                       <td style={styles.td}>{r.u ? <a href={r.u.startsWith("http") ? r.u : `https://${r.u}`} target="_blank" rel="noreferrer" style={styles.tdLink}>{r.u.replace(/^https?:\/\//, "").split("/")[0]}</a> : "—"}</td>
                     </tr>
                   ))}
@@ -565,6 +593,88 @@
           <Pagination total={filteredOem.length} page={oemPage} setPage={setOemPage} />
         </div>
       );
+
+      // ─── Submit Company Info view ────────────────────────────
+      const SubmitView = () => {
+        const [submitted, setSubmitted] = useState(false);
+        const [formData, setFormData] = useState({ company: "", country: "", contact: "", email: "", phone: "", website: "", address: "", categories: "", products: "", employees: "", certifications: "", notes: "" });
+        const set = (k) => (e) => setFormData(prev => ({ ...prev, [k]: e.target.value }));
+        const inputStyle = { ...styles.input, flex: "none", width: "100%" };
+        const labelStyle = { fontSize: 13, fontWeight: 600, color: NAVY, marginBottom: 4, display: "block" };
+
+        const handleSubmit = (e) => {
+          e.preventDefault();
+          // Build mailto link with form data
+          const subject = encodeURIComponent(`AutoBook 2026 — Company Submission: ${formData.company}`);
+          const body = encodeURIComponent(
+            `COMPANY SUBMISSION FOR AUTOBOOK 2026\n` +
+            `====================================\n\n` +
+            `Company Name: ${formData.company}\n` +
+            `Country: ${formData.country}\n` +
+            `Contact Person: ${formData.contact}\n` +
+            `Email: ${formData.email}\n` +
+            `Phone: ${formData.phone}\n` +
+            `Website: ${formData.website}\n` +
+            `Address: ${formData.address}\n` +
+            `Product Categories: ${formData.categories}\n` +
+            `Key Products: ${formData.products}\n` +
+            `Employees: ${formData.employees}\n` +
+            `Certifications: ${formData.certifications}\n` +
+            `Additional Notes: ${formData.notes}\n`
+          );
+          window.open(`mailto:uli@autobook.biz?subject=${subject}&body=${body}`, "_blank");
+          setSubmitted(true);
+        };
+
+        if (submitted) return (
+          <div style={{ textAlign: "center", padding: "60px 20px" }}>
+            <div style={{ fontSize: 64, marginBottom: 16 }}>✅</div>
+            <h2 style={{ ...styles.sectionTitle, marginBottom: 12 }}>Thank You!</h2>
+            <p style={{ color: "#667", fontSize: 16, maxWidth: 500, margin: "0 auto 24px" }}>
+              Your company information has been submitted. Our team will review and include it in the next edition of AutoBook.
+            </p>
+            <button style={styles.navBtn} onClick={() => setSubmitted(false)}>Submit Another Company</button>
+          </div>
+        );
+
+        return (
+          <div style={{ maxWidth: 720, margin: "0 auto" }}>
+            <h1 style={{ ...styles.sectionTitle, marginBottom: 8 }}>Submit Your Company Information</h1>
+            <p style={{ color: "#667", fontSize: 15, marginBottom: 8 }}>
+              Get your company listed in the <strong>AutoBook 2026 Global Automotive Supply Chain Directory</strong> — reaching thousands of automotive professionals worldwide.
+            </p>
+            <div style={{ background: "rgba(200,169,81,0.1)", border: `1px solid ${GOLD}`, borderRadius: 8, padding: "12px 16px", marginBottom: 24, fontSize: 13, color: NAVY }}>
+              <strong>Free listing included.</strong> Verify or update your existing entry, or submit your company for inclusion in the next edition. Your submission will be reviewed by our editorial team.
+            </div>
+
+            <form onSubmit={handleSubmit}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+                <div><label style={labelStyle}>Company Name *</label><input style={inputStyle} required value={formData.company} onChange={set("company")} placeholder="e.g. Continental AG" /></div>
+                <div><label style={labelStyle}>Country *</label><input style={inputStyle} required value={formData.country} onChange={set("country")} placeholder="e.g. Germany" /></div>
+                <div><label style={labelStyle}>Contact Person</label><input style={inputStyle} value={formData.contact} onChange={set("contact")} placeholder="e.g. John Smith, Sales Director" /></div>
+                <div><label style={labelStyle}>Email *</label><input style={inputStyle} required type="email" value={formData.email} onChange={set("email")} placeholder="e.g. info@company.com" /></div>
+                <div><label style={labelStyle}>Phone</label><input style={inputStyle} value={formData.phone} onChange={set("phone")} placeholder="e.g. +49-511-938-01" /></div>
+                <div><label style={labelStyle}>Website</label><input style={inputStyle} value={formData.website} onChange={set("website")} placeholder="e.g. www.company.com" /></div>
+              </div>
+              <div style={{ marginBottom: 16 }}><label style={labelStyle}>Address</label><input style={inputStyle} value={formData.address} onChange={set("address")} placeholder="Full street address, city, postal code" /></div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+                <div><label style={labelStyle}>Product Categories</label><input style={inputStyle} value={formData.categories} onChange={set("categories")} placeholder="e.g. Electronics, Engine, Body/Interior" /></div>
+                <div><label style={labelStyle}>Key Products / Services</label><input style={inputStyle} value={formData.products} onChange={set("products")} placeholder="e.g. Sensors, ECUs, Wiring Harnesses" /></div>
+                <div><label style={labelStyle}>Number of Employees</label><input style={inputStyle} value={formData.employees} onChange={set("employees")} placeholder="e.g. 500" /></div>
+                <div><label style={labelStyle}>Quality Certifications</label><input style={inputStyle} value={formData.certifications} onChange={set("certifications")} placeholder="e.g. IATF 16949, ISO 14001" /></div>
+              </div>
+              <div style={{ marginBottom: 24 }}><label style={labelStyle}>Additional Notes / OEM Customers</label><textarea style={{ ...inputStyle, minHeight: 80, resize: "vertical" }} value={formData.notes} onChange={set("notes")} placeholder="Any additional information, OEM customers, special capabilities..." /></div>
+
+              <button type="submit" style={{ ...styles.navBtn, fontSize: 16, padding: "14px 36px", width: "100%" }}>
+                Submit Company Information
+              </button>
+              <p style={{ color: "#999", fontSize: 12, textAlign: "center", marginTop: 12 }}>
+                This opens your email client with the pre-filled information. You can also email us directly at <a href="mailto:uli@autobook.biz" style={{ color: BLUE }}>uli@autobook.biz</a>
+              </p>
+            </form>
+          </div>
+        );
+      };
 
       // ─── Platform layout ───────────────────────────────────────
       const PlatformLayout = ({ children }) => (
@@ -581,6 +691,7 @@
             <button style={styles.sideItem(view === "countries")} onClick={() => setView("countries")}>🌍 Browse by Country</button>
             <button style={styles.sideItem(view === "suppliers")} onClick={() => setView("suppliers")}>🏢 Suppliers ({suppliers.length.toLocaleString()})</button>
             <button style={styles.sideItem(view === "oem")} onClick={() => setView("oem")}>🏭 OEM Plants ({oemPlants.length.toLocaleString()})</button>
+            <button style={styles.sideItem(view === "submit")} onClick={() => setView("submit")}>📝 Submit Company Info</button>
             <div style={{ borderTop: "1px solid rgba(255,255,255,0.1)", marginTop: 20, paddingTop: 20 }}>
               <button style={styles.sideItem(false)} onClick={() => { setIsUnlocked(false); setView("landing"); }}>← Back to Home</button>
             </div>
@@ -604,12 +715,15 @@
       return (
         <div style={styles.app}>
           <NavBar />
-          {!isUnlocked ? <Landing /> : (
+          {view === "submit" && !isUnlocked ? (
+            <div style={{ maxWidth: 1280, margin: "0 auto", padding: "40px 24px" }}><SubmitView /></div>
+          ) : !isUnlocked ? <Landing /> : (
             <PlatformLayout>
               {view === "dashboard" && <Dashboard />}
               {view === "countries" && <CountriesView />}
               {view === "suppliers" && <SuppliersView />}
               {view === "oem" && <OemView />}
+              {view === "submit" && <SubmitView />}
             </PlatformLayout>
           )}
         </div>
